@@ -26,50 +26,75 @@ logger = build_logger()
 DEFAULT_API_CONCURRENCIES = 5  # 默认单个模型最大并发数
 model_semaphores: Dict[
     Tuple[str, str], asyncio.Semaphore
-] = {}  # key: (model_name, platform)
+] = {}  # key: (model_name, platform), value: 信号量 用于限制每个模型在特定平台上的并发访问量
 openai_router = APIRouter(prefix="/v1", tags=["OpenAI 兼容平台整合接口"])
 
 
-@asynccontextmanager
+# 只在当前文件使用
+@asynccontextmanager #因为涉及到模型使用资源???
 async def get_model_client(model_name: str) -> AsyncGenerator[AsyncClient]:
     """
     对重名模型进行调度，依次选择：空闲的模型 -> 当前访问数最少的模型
     """
     max_semaphore = 0
     selected_platform = ""
-    model_infos = get_model_info(model_name=model_name, multiple=True)
+    model_infos = get_model_info(model_name=model_name, multiple=True) # 获取指定模型信息，返回值是一个字典
     assert model_infos, f"specified model '{model_name}' cannot be found in MODEL_PLATFORMS."
 
-    for m, c in model_infos.items():
-        key = (m, c["platform_name"])
-        api_concurrencies = c.get("api_concurrencies", DEFAULT_API_CONCURRENCIES)
-        if key not in model_semaphores:
+    ''' 参考model_infos的格式
+        {model_name: {
+            "platform_name": xx,
+            "platform_type": xx,
+            "model_type": xx,
+            "model_name": xx,
+            "api_base_url": xx,
+            "api_key": xx,
+            "api_proxy": xx,
+        }}
+    '''
+    for m, c in model_infos.items(): #遍历字典所有键值对，用于选择不同平台的同一个目标模型
+        key = (m, c["platform_name"]) # key = (model_name, platform_name)
+        api_concurrencies = c.get("api_concurrencies", DEFAULT_API_CONCURRENCIES) # get_model_info返回值中没有构建这个参数，虽然配置文件有，但是似乎没用
+        if key not in model_semaphores: # 当前平台的模型没有用过，则设置信号量为5
             model_semaphores[key] = asyncio.Semaphore(api_concurrencies)
-        semaphore = model_semaphores[key]
-        if semaphore._value >= api_concurrencies:
+        semaphore = model_semaphores[key] #获取当前模型信号量
+        if semaphore._value >= api_concurrencies: #如果 >=5， 则尝试选择下一个平台(下一个循环也不一定有模型，故selected_platform先设置为当前平台)
             selected_platform = c["platform_name"]
             break
-        elif semaphore._value > max_semaphore:
+        elif semaphore._value > max_semaphore: # >0 <5 则直接选择当前平台
             selected_platform = c["platform_name"]
 
     key = (m, selected_platform)
-    semaphore = model_semaphores[key]
+    semaphore = model_semaphores[key] #尝试对信号量操作获取一个资源
     try:
         await semaphore.acquire()
-        yield get_OpenAIClient(platform_name=selected_platform, is_async=True)
+        yield get_OpenAIClient(platform_name=selected_platform, is_async=True) # 这是一个迭代器
     except Exception:
         logger.exception(f"failed when request to {key}")
     finally:
         semaphore.release()
 
 
+# method：一个异步函数，代表要调用的OpenAI API方法。
+# body：一个模型实例，通常包含要发送到OpenAI API的请求数据。
+# extra_json：一个字典，包含要在响应中添加的额外JSON字段。
+# header：一个可迭代对象，包含要在响应开始处添加的数据。
+# tail：一个可迭代对象，包含要在响应结束处添加的数据。
+#
+# await openai_request(
+#                     client.chat.completions.create,
+#                     body,
+#                     extra_json=extra_json,
+#                     header=header,
+#                 )
+# 可以在请求头部(header) 尾部(tail) 请求体(extra_json)中添加额外的JSON字段
 async def openai_request(
     method, body, extra_json: Dict = {}, header: Iterable = [], tail: Iterable = []
 ):
     """
     helper function to make openai request with extra fields
     """
-
+    # 只是定义
     async def generator():
         try:
             for x in header:
@@ -105,14 +130,15 @@ async def openai_request(
             logger.error(f"openai request error: {e}")
             yield {"data": json.dumps({"error": str(e)})}
 
-    params = body.model_dump(exclude_unset=True)
+    # 进入函数先执行
+    params = body.model_dump(exclude_unset=True) # dump时排除未设置的值?
     if params.get("max_tokens") == 0:
         params["max_tokens"] = Settings.model_settings.MAX_TOKENS
 
     if hasattr(body, "stream") and body.stream:
-        return EventSourceResponse(generator())
+        return EventSourceResponse(generator()) # 为了流式返回生成器数据
     else:
-        result = await method(**params)
+        result = await method(**params) # 直接调用并返回
         for k, v in extra_json.items():
             setattr(result, k, v)
         return result.model_dump()

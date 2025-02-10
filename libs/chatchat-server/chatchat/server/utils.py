@@ -54,7 +54,7 @@ def get_base_url(url):
     base_url = '{uri.scheme}://{uri.netloc}/'.format(uri=parsed_url)  # 格式化基础url
     return base_url.rstrip('/')
 
-
+# 返回配置文件中所有的平台，{platform_name, 对于平台详细信息}
 def get_config_platforms() -> Dict[str, Dict]:
     """
     获取配置的模型平台，会将 pydantic model 转换为字典。
@@ -109,7 +109,7 @@ def detect_xf_models(xf_url: str) -> Dict[str, List[str]]:
         logger.warning(f"error when connect to xinference server({xf_url}): {e}")
     return models
 
-
+# 根据模型名称，模型类型，模型平台作为参数查询，从配置文件中寻找模型相关信息并返回
 def get_config_models(
         model_name: str = None,
         model_type: Optional[Literal[
@@ -130,7 +130,7 @@ def get_config_models(
     }}
     """
     result = {}
-    if model_type is None:
+    if model_type is None: # model_types数组中存放要查询的模型类型，如果没有指定类型则查询所有类型模型
         model_types = [
             "llm_models",
             "embed_models",
@@ -144,10 +144,12 @@ def get_config_models(
     else:
         model_types = [f"{model_type}_models"]
 
+    # 从配置文件所有平台中查询目标平台，m是个字典中的单个键值对
     for m in list(get_config_platforms().values()):
         if platform_name is not None and platform_name != m.get("platform_name"):
             continue
 
+        # 配置文件中auto_detect_model字段为True时,字段探测模型，对我用处不大，因为我一定是自己配置
         if m.get("auto_detect_model"):
             if not m.get("platform_type") == "xinference":  # TODO：当前仅支持 xf 自动检测模型
                 logger.warning(f"auto_detect_model not supported for {m.get('platform_type')} yet")
@@ -159,15 +161,16 @@ def get_config_models(
                 #     continue
                 m[m_type] = xf_models.get(m_type, [])
 
+        # 对于目标平台的配置进行查询
         for m_type in model_types:
-            models = m.get(m_type, [])
-            if models == "auto":
+            models = m.get(m_type, []) #获取当前目标平台的模型类型
+            if models == "auto": # 当前目标平台的模型类型配置有问题
                 logger.warning("you should not set `auto` without auto_detect_model=True")
                 continue
-            elif not models:
+            elif not models: # 当前平台没有查询到要获取的模型类型
                 continue
-            for m_name in models:
-                if model_name is None or model_name == m_name:
+            for m_name in models: # 如果当前平台有目标模型，则查询模型名称是否符合要求
+                if model_name is None or model_name == m_name: # 返回符合要求的
                     result[m_name] = {
                         "platform_name": m.get("platform_name"),
                         "platform_type": m.get("platform_type"),
@@ -176,10 +179,10 @@ def get_config_models(
                         "api_base_url": m.get("api_base_url"),
                         "api_key": m.get("api_key"),
                         "api_proxy": m.get("api_proxy"),
-                    }
+                    } #这里的返回值没有构建api_concurrencies参数，而调用时确用到了(openai_route.py)，相当于这个参数无论设置与否都没有用
     return result
 
-
+# 获取模型信息，其调用从配置文件获取模型信息的函数get_config_models
 def get_model_info(
         model_name: str = None, platform_name: str = None, multiple: bool = False
 ) -> Dict:
@@ -187,6 +190,7 @@ def get_model_info(
     获取配置的模型信息，主要是 api_base_url, api_key
     如果指定 multiple=True，则返回所有重名模型；否则仅返回第一个
     """
+    # 从配置文件获取指定的模型信息
     result = get_config_models(model_name=model_name, platform_name=platform_name)
     if len(result) > 0:
         if multiple:

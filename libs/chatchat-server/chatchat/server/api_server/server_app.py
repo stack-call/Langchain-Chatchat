@@ -21,7 +21,7 @@ from chatchat.server.utils import MakeFastAPIOffline
 
 def create_app(run_mode: str = None):
     app = FastAPI(title="Langchain-Chatchat API Server", version=__version__)
-    MakeFastAPIOffline(app)
+    MakeFastAPIOffline(app) #配置离线文档
     # Add CORS middleware to allow all origins
     # 在config.py中设置OPEN_DOMAIN=True，允许跨域
     # set OPEN_DOMAIN=True in config.py to allow cross-domain
@@ -35,21 +35,21 @@ def create_app(run_mode: str = None):
         )
 
     @app.get("/", summary="swagger 文档", include_in_schema=False)
-    async def document():
+    async def document(): #访问/自动调整访问/docs，且/不加入文档
         return RedirectResponse(url="/docs")
 
-    app.include_router(chat_router)
-    app.include_router(kb_router)
-    app.include_router(tool_router)
-    app.include_router(openai_router)
-    app.include_router(server_router)
+    app.include_router(chat_router) #/chat
+    app.include_router(kb_router) #/knowledge_base
+    app.include_router(tool_router) #/tools
+    app.include_router(openai_router)  #/v1 ，是完全的openai接口
+    app.include_router(server_router) #/server
 
     # 其它接口
     app.post(
         "/other/completion",
         tags=["Other"],
         summary="要求llm模型补全(通过LLMChain)",
-    )(completion)
+    )(completion)  #???没看明白
 
     # 媒体文件
     app.mount("/media", StaticFiles(directory=Settings.basic_settings.MEDIA_PATH), name="media")
