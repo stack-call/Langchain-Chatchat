@@ -39,7 +39,7 @@ class BasicSettings(BaseFileSettings):
 
     HTTPX_DEFAULT_TIMEOUT: float = 300
     """httpx 请求默认超时时间（秒）。如果加载模型或对话较慢，出现超时错误，可以适当加大该值。"""
-
+    
     # @computed_field
     @cached_property
     def PACKAGE_ROOT(self) -> Path:

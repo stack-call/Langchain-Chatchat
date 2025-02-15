@@ -103,14 +103,18 @@ class QwenChatAgentOutputParserCustom(StructuredChatOutputParser):
     """Output parser with retries for the structured chat agent with custom qwen prompt."""
 
     def parse(self, text: str) -> Union[AgentAction, AgentFinish]:
+        print(text)
         if s := re.findall(
-            r"\nAction:\s*(.+)\nAction\sInput:\s*(.+)", text, flags=re.DOTALL
+            r"\nAction:\s*(.+)\nAction\sInput:\s*(.+)\n", text, flags=re.DOTALL
         ):
+            print('*'*8)
+            print(s)
             s = s[-1]
             json_string: str = s[1]
             json_input = None
             try:
                 json_input = json.loads(json_string)
+                print(json_input)
             except:
                 # ollama部署的qwen，返回的json键值可能为单引号，可能缺少最后的引号和括号
                 if not json_string.endswith('"}'):
@@ -123,6 +127,8 @@ class QwenChatAgentOutputParserCustom(StructuredChatOutputParser):
                         fixed_json_string = (re.sub(r'//.*', '', (json_string + '"}').replace("'", '"'))
                                              .strip()
                                              .replace('\n', ''))
+                        print('-'*8)
+                        print(fixed_json_string)
                         if not validate_json(fixed_json_string):
                             fixed = False
                             print("尝试修复json格式失败：" + json_string)
@@ -168,7 +174,7 @@ class QwenChatAgentOutputParserLC(StructuredChatOutputParser):
     def _type(self) -> str:
         return "StructuredQWenChatOutputParserLC"
 
-
+# 创建qwen的整个agentexecutor(Chain), 核心在于自定义parser
 def create_structured_qwen_chat_agent(
     llm: BaseLanguageModel,
     tools: Sequence[BaseTool],

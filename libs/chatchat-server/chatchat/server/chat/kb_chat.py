@@ -26,7 +26,7 @@ from chatchat.server.utils import (wrap_done, get_ChatOpenAI, get_default_llm,
 
 logger = build_logger()
 
-
+# RAG对话
 async def kb_chat(query: str = Body(..., description="用户输入", examples=["你好"]),
                 mode: Literal["local_kb", "temp_kb", "search_engine"] = Body("local_kb", description="知识来源"),
                 kb_name: str = Body("", description="mode=local_kb时为知识库名称；temp_kb时为临时知识库ID，search_engine时为搜索引擎名称", examples=["samples"]),

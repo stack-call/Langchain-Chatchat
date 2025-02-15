@@ -165,7 +165,9 @@ def get_LoaderClass(file_extension):
         if file_extension in extensions:
             return LoaderClass
 
-
+# 为{file_path}查找加载器{loader_name}
+# get_loader函数被file2docs方法调用，用于根据文件路径和加载器名称动态加载文件内容，进而转换为文档对象。
+# 这种设计使得加载不同类型文件的过程更加灵活和可配置。
 def get_loader(loader_name: str, file_path: str, loader_kwargs: Dict = None):
     """
     根据loader_name和文件路径或内容返回文档加载器。
@@ -193,8 +195,9 @@ def get_loader(loader_name: str, file_path: str, loader_kwargs: Dict = None):
         document_loaders_module = importlib.import_module(
             "langchain_community.document_loaders"
         )
-        DocumentLoader = getattr(document_loaders_module, "UnstructuredFileLoader")
+        DocumentLoader = getattr(document_loaders_module, "UnstructuredFileLoader") # 非结构化文件加载器， 即未知
 
+    # 根据加载器设置参数
     if loader_name == "UnstructuredFileLoader":
         loader_kwargs.setdefault("autodetect_encoding", True)
     elif loader_name == "CSVLoader":
@@ -224,7 +227,7 @@ def make_text_splitter(splitter_name, chunk_size, chunk_overlap):
     """
     splitter_name = splitter_name or "SpacyTextSplitter"
     try:
-        if (
+        if ( # 对于md文档分词器
             splitter_name == "MarkdownHeaderTextSplitter"
         ):  # MarkdownHeaderTextSplitter特殊判定
             headers_to_split_on = Settings.kb_settings.text_splitter_dict[splitter_name][

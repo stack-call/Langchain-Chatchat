@@ -2,7 +2,7 @@ from datetime import datetime
 
 from sqlalchemy import Column, DateTime, Integer, String
 
-
+# 没有用的基类，因为应该使用sqlalchemy提供的基类
 class BaseModel:
     """
     基础模型

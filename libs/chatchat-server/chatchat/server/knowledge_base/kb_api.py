@@ -15,7 +15,7 @@ logger = build_logger()
 
 def list_kbs():
     # Get List of Knowledge Base
-    return ListResponse(data=list_kbs_from_db())
+    return ListResponse(data=list_kbs_from_db()) # 是一个类似response payload的返回体
 
 
 def create_kb(

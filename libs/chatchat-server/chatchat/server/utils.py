@@ -359,7 +359,9 @@ def check_embed_model(embed_model: str = None) -> Tuple[bool, str]:
         logger.error(msg)
         return False, msg
 
-
+# 普通函数，不是async，根据指定平台或模型名称获取openai客户端
+# 如果只指定平台，则将 base_url和api_key填入，model_name基本上没用，返回值最多再加一个http_client
+# 与get_model_client区分， 这个函数是建立一个与目标平台和模型的client连结
 def get_OpenAIClient(
         platform_name: str = None,
         model_name: str = None,
@@ -679,7 +681,7 @@ def set_httpx_config(
     httpx._config.DEFAULT_TIMEOUT_CONFIG.write = timeout
 
     # 在进程范围内设置系统级代理
-    proxies = {}
+    proxies = {} # 根据传参proxy设置代理地址
     if isinstance(proxy, str):
         for n in ["http", "https", "all"]:
             proxies[n + "_proxy"] = proxy
@@ -762,6 +764,7 @@ def run_in_process_pool(
                 logger.exception(f"error in sub process: {e}")
 
 
+# 没有usage
 def get_httpx_client(
         use_async: bool = False,
         proxies: Union[str, Dict] = None,
@@ -895,9 +898,9 @@ def get_tool(name: str = None) -> Union[BaseTool, Dict[str, BaseTool]]:
 
     update_search_local_knowledgebase_tool()
     if name is None:
-        return tools_registry._TOOLS_REGISTRY
+        return tools_registry._TOOLS_REGISTRY # 返回所有工具
     else:
-        return tools_registry._TOOLS_REGISTRY.get(name)
+        return tools_registry._TOOLS_REGISTRY.get(name) # 返回目标工具
 
 
 def get_tool_config(name: str = None) -> Dict:

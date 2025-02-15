@@ -41,7 +41,7 @@ def create_app(run_mode: str = None):
     app.include_router(chat_router) #/chat
     app.include_router(kb_router) #/knowledge_base
     app.include_router(tool_router) #/tools
-    app.include_router(openai_router)  #/v1 ，是完全的openai接口
+    app.include_router(openai_router)  #/v1 ，是完全的openai like接口
     app.include_router(server_router) #/server
 
     # 其它接口

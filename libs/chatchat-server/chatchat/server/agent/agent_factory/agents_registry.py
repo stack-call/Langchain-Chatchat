@@ -24,29 +24,30 @@ def agents_registry(
     # llm.callbacks = callbacks
     llm.streaming = False  # qwen agent not support streaming
 
-    # Write any optimized method here.
-    if "glm3" in llm.model_name.lower():
-        # An optimized method of langchain Agent that uses the glm3 series model
-        agent = create_structured_glm3_chat_agent(llm=llm, tools=tools)
-
-        agent_executor = AgentExecutor(
-            agent=agent, tools=tools, verbose=verbose, callbacks=callbacks
-        )
-
-        return agent_executor
-    elif "qwen" in llm.model_name.lower():
-        return create_structured_qwen_chat_agent(
-            llm=llm, tools=tools, callbacks=callbacks
-        )
+    # # Write any optimized method here.
+    # if "glm3" in llm.model_name.lower():
+    #     # An optimized method of langchain Agent that uses the glm3 series model
+    #     agent = create_structured_glm3_chat_agent(llm=llm, tools=tools)
+    #
+    #     agent_executor = AgentExecutor(
+    #         agent=agent, tools=tools, verbose=verbose, callbacks=callbacks
+    #     )
+    #
+    #     return agent_executor
+    # elif "qwen" in llm.model_name.lower():
+    #     return create_structured_qwen_chat_agent(
+    #         llm=llm, tools=tools, callbacks=callbacks
+    #     )
+    # else:
+    # 似乎根本不需要自定义qwen的agent，现在使用qwen2.5直接可以用下面模板跑，而且不会有json解析异常
+    if prompt is not None:
+        prompt = ChatPromptTemplate.from_messages([SystemMessage(content=prompt)])
     else:
-        if prompt is not None:
-            prompt = ChatPromptTemplate.from_messages([SystemMessage(content=prompt)])
-        else:
-            prompt = hub.pull("hwchase17/structured-chat-agent")  # default prompt
-        agent = create_structured_chat_agent(llm=llm, tools=tools, prompt=prompt)
+        prompt = hub.pull("hwchase17/structured-chat-agent")  # default prompt
+    agent = create_structured_chat_agent(llm=llm, tools=tools, prompt=prompt)
 
-        agent_executor = AgentExecutor(
-            agent=agent, tools=tools, verbose=verbose, callbacks=callbacks
-        )
+    agent_executor = AgentExecutor(
+        agent=agent, tools=tools, verbose=verbose, callbacks=callbacks
+    )
 
-        return agent_executor
+    return agent_executor

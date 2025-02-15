@@ -21,6 +21,25 @@ Answer: Final answer here
 Question: {query}
 """
 
+QUERY_CHECKER = """
+{query}
+Double check the {dialect} query above for common mistakes, including:
+- Using NOT IN with NULL values
+- Using UNION when UNION ALL should have been used
+- Using BETWEEN for exclusive ranges
+- Data type mismatch in predicates
+- Properly quoting identifiers
+- Using the correct number of arguments for functions
+- Casting to the correct data type
+- Using the proper columns for joins
+
+If there are any of the above mistakes, rewrite the query. If there are no mistakes, just reproduce the original query.
+
+Output the final executable SQL query only.Do not use any format.
+
+SQL Query: """
+
+
 
 # 定义一个拦截器函数来检查SQL语句，以支持read-only,可修改下面的write_operations，以匹配你使用的数据库写操作关键字
 def intercept_sql(conn, cursor, statement, parameters, context, executemany):
@@ -69,7 +88,7 @@ def query_database(query: str, config: dict):
     # 由于langchain固定了输入参数，所以只能通过query传递额外的表说明
     if table_comments:
         TABLE_COMMNET_PROMPT = (
-            "\n\nI will provide some special notes for a few tables:\n\n"
+            "\n\n我会为一些表提供一些提示信息，提示信息如下:\n\n"
         )
         table_comments_str = "\n".join([f"{k}:{v}" for k, v in table_comments.items()])
         query = query + TABLE_COMMNET_PROMPT + table_comments_str + "\n\n"
@@ -90,7 +109,8 @@ def query_database(query: str, config: dict):
 
         # 当然大模型不能保证完全判断准确，为防止大模型判断有误，再从拦截器层面拒绝写操作
         event.listen(db._engine, "before_cursor_execute", intercept_sql)
-
+    print("查询!!!")
+    print(query)
     # 如果不指定table_names，优先走SQLDatabaseSequentialChain，这个链会先预测需要哪些表，然后再将相关表输入SQLDatabaseChain
     # 这是因为如果不指定table_names，直接走SQLDatabaseChain，Langchain会将全量表结构传递给大模型，可能会因token太长从而引发错误，也浪费资源
     # 如果指定了table_names，直接走SQLDatabaseChain，将特定表结构传递给大模型进行判断
@@ -101,8 +121,15 @@ def query_database(query: str, config: dict):
             verbose=True,
             top_k=top_k,
             return_intermediate_steps=return_intermediate_steps,
+            use_query_checker=True,
+            query_checker_prompt = PromptTemplate( # 查看SQLDatabaseChain的源代码，查询其query_check使用的模板，copy过来然后修改一下模板，这样sql语句格式终于正确
+                    template=QUERY_CHECKER, input_variables=["query", "dialect"]
+                )
         )
+        print(db_chain.prompt)
         result = db_chain.invoke({"query": query, "table_names_to_use": table_names})
+        print("结果！！！")
+        print(result)
     else:
         # 先预测会使用哪些表，然后再将问题和预测的表给大模型
         db_chain = SQLDatabaseSequentialChain.from_llm(
@@ -113,7 +140,6 @@ def query_database(query: str, config: dict):
             return_intermediate_steps=return_intermediate_steps,
         )
         result = db_chain.invoke(query)
-
     context = f"""查询结果:{result['result']}\n\n"""
 
     intermediate_steps = result["intermediate_steps"]

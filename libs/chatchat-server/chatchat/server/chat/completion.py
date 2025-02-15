@@ -12,7 +12,7 @@ from chatchat.server.utils import get_OpenAI, get_prompt_template, wrap_done, bu
 
 logger = build_logger()
 
-
+# server_app.py/create_app() 中1usage
 async def completion(
     query: str = Body(..., description="用户输入", examples=["恼羞成怒"]),
     stream: bool = Body(False, description="流式输出"),

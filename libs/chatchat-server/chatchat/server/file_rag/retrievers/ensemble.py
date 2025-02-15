@@ -38,9 +38,10 @@ class EnsembleRetrieverService(BaseRetrieverService):
             docs,
             preprocess_func=jieba.lcut_for_search,
         )
-        bm25_retriever.k = top_k
+        bm25_retriever.k = top_k # 这个bm25检索器就算没有检索到也返回3个数据，很烦
         ensemble_retriever = EnsembleRetriever(
-            retrievers=[bm25_retriever, faiss_retriever], weights=[0.5, 0.5]
+            # retrievers=[bm25_retriever, faiss_retriever], weights=[0.5, 0.5] # 去掉bm25检索器
+            retrievers=[faiss_retriever], weights=[0.5]
         )
         return EnsembleRetrieverService(retriever=ensemble_retriever, top_k=top_k)
 

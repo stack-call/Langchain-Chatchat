@@ -36,4 +36,4 @@ class KnowledgeBaseSchema(BaseModel):
     create_time: Optional[datetime]
 
     class Config:
-        from_attributes = True  # 确保可以从 ORM 实例进行验证
+        from_attributes = True  # 确保可以从 ORM 实例进行验证,不是orm_mode

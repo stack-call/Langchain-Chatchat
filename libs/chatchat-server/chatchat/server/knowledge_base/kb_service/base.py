@@ -67,8 +67,8 @@ class KBService(ABC):
             knowledge_base_name, f"关于{knowledge_base_name}的知识库"
         )
         self.embed_model = embed_model
-        self.kb_path = get_kb_path(self.kb_name)
-        self.doc_path = get_doc_path(self.kb_name)
+        self.kb_path = get_kb_path(self.kb_name) # 知识库名称，如test
+        self.doc_path = get_doc_path(self.kb_name) # 知识库文档文章 如test\content
         self.do_init()
 
     def __repr__(self) -> str:
@@ -87,9 +87,10 @@ class KBService(ABC):
         """
         创建知识库
         """
-        if not os.path.exists(self.doc_path):
+        if not os.path.exists(self.doc_path): # 这个是文档位置，即content
             os.makedirs(self.doc_path)
 
+        # 插入数据库 当前知识库的信息
         status = add_kb_to_db(
             self.kb_name, self.kb_info, self.vs_type(), self.embed_model
         )

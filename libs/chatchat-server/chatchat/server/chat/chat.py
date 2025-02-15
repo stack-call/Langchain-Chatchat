@@ -43,7 +43,7 @@ def create_models_from_config(configs, callbacks, stream, max_tokens):
         callbacks = callbacks if params.get("callbacks", False) else None
         # 判断是否传入 max_tokens 的值, 如果传入就按传入的赋值(api 调用且赋值), 如果没有传入则按照初始化配置赋值(ui 调用或 api 调用未赋值)
         max_tokens_value = max_tokens if max_tokens is not None else params.get("max_tokens", 1000)
-        model_instance = get_ChatOpenAI(
+        model_instance = get_ChatOpenAI( # 这里使用的是本服务器的openai_routes
             model_name=model_name,
             temperature=params.get("temperature", 0.5),
             max_tokens=max_tokens_value,
@@ -68,8 +68,8 @@ def create_models_chains(
         history = [History.from_data(h) for h in history]
         input_msg = History(role="user", content=prompts["llm_model"]).to_msg_template(
             False
-        )
-        chat_prompt = ChatPromptTemplate.from_messages(
+        ) # 提示词模板
+        chat_prompt = ChatPromptTemplate.from_messages( # 历史记录+模板
             [i.to_msg_template() for i in history] + [input_msg]
         )
     elif conversation_id and history_len > 0:
@@ -85,9 +85,9 @@ def create_models_chains(
         chat_prompt = ChatPromptTemplate.from_messages([input_msg])
 
     if "action_model" in models and tools:
-        llm = models["action_model"]
+        llm = models["action_model"] # 获取action_model
         llm.callbacks = callbacks
-        agent_executor = agents_registry(
+        agent_executor = agents_registry( #创建agent executor
             llm=llm, callbacks=callbacks, tools=tools, prompt=None, verbose=True
         )
         full_chain = {"input": lambda x: x["input"]} | agent_executor
@@ -98,7 +98,7 @@ def create_models_chains(
         full_chain = {"input": lambda x: x["input"]} | chain
     return full_chain
 
-
+# 核心的agent对话
 async def chat(
     query: str = Body(..., description="用户输入", examples=["恼羞成怒"]),
     metadata: dict = Body({}, description="附件，可能是图像或者其他功能", examples=[]),
@@ -177,6 +177,8 @@ async def chat(
             last_tool = {}
             async for chunk in callback.aiter():
                 data = json.loads(chunk)
+                print("&"*8)
+                print(data)
                 data["tool_calls"] = []
                 data["message_type"] = MsgType.TEXT
 

@@ -347,6 +347,13 @@ async def start_main_server(args):
     help="run webui.py server",
 )
 def main(all, api, webui):
+
+    # os.environ["LANGSMITH_TRACING"] = "true"
+    # os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com"
+    # os.environ["LANGSMITH_API_KEY"] = "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"
+    # os.environ["LANGSMITH_PROJECT"] = "chatchatdev"
+
+
     class args:
         ...
     args.all = all

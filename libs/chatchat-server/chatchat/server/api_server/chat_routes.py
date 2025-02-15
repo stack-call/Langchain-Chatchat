@@ -59,8 +59,8 @@ async def chat_completions(
     以后还要考虑其它的组合（如文件对话）
     返回与 openai 兼容的 Dict
     """
-    # import rich
-    # rich.print(body)
+    import rich
+    rich.print(body)
 
     # 当调用本接口且 body 中没有传入 "max_tokens" 参数时, 默认使用配置中定义的值
     if body.max_tokens in [None, 0]:
@@ -68,14 +68,14 @@ async def chat_completions(
 
     client = get_OpenAIClient(model_name=body.model, is_async=True)
     extra = {**body.model_extra} or {}
-    for key in list(extra):
+    for key in list(extra): # 对openai接口请求时不需要这些额外参数，处理后删除
         delattr(body, key)
 
     # check tools & tool_choice in request body
-    if isinstance(body.tool_choice, str):
+    if isinstance(body.tool_choice, str): # 如果只写了工具名 如果 tool_choice 是一个字符串，则将其转换为包含函数名称的字典。
         if t := get_tool(body.tool_choice):
             body.tool_choice = {"function": {"name": t.name}, "type": "function"}
-    if isinstance(body.tools, list):
+    if isinstance(body.tools, list): # 如果是多个工具 如果 tools 是一个列表，则将列表中的工具名称转换为包含工具详细信息的字典。
         for i in range(len(body.tools)):
             if isinstance(body.tools[i], str):
                 if t := get_tool(body.tools[i]):
@@ -88,7 +88,14 @@ async def chat_completions(
                         },
                     }
 
-    conversation_id = extra.get("conversation_id")
+    conversation_id = extra.get("conversation_id") # 获取会话ID，如果有的话。
+
+    # 接下来的代码根据 tool_choice、tools 或其他参数处理不同的聊天场景：
+    #
+    # 如果有 tool_choice，则直接调用该工具或者通过代理调用。
+    # 如果有 tools，则进行代理聊天。
+    # 如果没有上述参数，则直接进行LLM（大型语言模型）聊天。
+    # 函数的每个分支都涉及到数据库操作、工具调用、事件源响应或 OpenAI 请求，并最终返回与 OpenAI 兼容的字典。
 
     # chat based on result from one choiced tool
     if body.tool_choice:
@@ -104,7 +111,8 @@ async def chat_completions(
                     },
                 }
             ]
-        if tool_input := extra.get("tool_input"):
+
+        if tool_input := extra.get("tool_input"): # 需要调用函数?
             try:
                 message_id = (
                     add_message_to_db(
@@ -123,9 +131,9 @@ async def chat_completions(
             prompt_template = PromptTemplate.from_template(
                 get_prompt_template("rag", "default"), template_format="jinja2"
             )
-            body.messages[-1]["content"] = prompt_template.format(
+            body.messages[-1]["content"] = prompt_template.format( # 直接将body中的内容修改为工具计算结果，也就是说可以根据工具结果调用llm或直接返回
                 context=tool_result, question=body.messages[-1]["content"]
-            )
+            ) # 修改了body的message，使用rag提示
             del body.tools
             del body.tool_choice
             extra_json = {
@@ -147,13 +155,14 @@ async def chat_completions(
                     yield OpenAIChatOutput(**header[0]).model_dump_json()
                 return EventSourceResponse(temp_gen())
             else:
-                return await openai_request(
+                return await openai_request( # 这里请求的content被修改了
                     client.chat.completions.create,
                     body,
                     extra_json=extra_json,
                     header=header,
                 )
 
+    rich.print(body)
     # agent chat with tool calls
     if body.tools:
         try:
@@ -173,7 +182,7 @@ async def chat_completions(
         chat_model_config = {}  # TODO: 前端支持配置模型
         tool_names = [x["function"]["name"] for x in body.tools]
         tool_config = {name: get_tool_config(name) for name in tool_names}
-        result = await chat(
+        result = await chat( #进行agent对话!!!
             query=body.messages[-1]["content"],
             metadata=extra.get("metadata", {}),
             conversation_id=extra.get("conversation_id", ""),

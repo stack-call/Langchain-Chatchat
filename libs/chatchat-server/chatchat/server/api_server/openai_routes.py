@@ -30,8 +30,9 @@ model_semaphores: Dict[
 openai_router = APIRouter(prefix="/v1", tags=["OpenAI 兼容平台整合接口"])
 
 
-# 只在当前文件使用
-@asynccontextmanager #因为涉及到模型使用资源???
+# 只在当前文件使用, 而get_openaiclient其他地方也有用, 此函数调用get_openaiclient
+# 这个函数是对所有平台的目标模型进行选择调度
+@asynccontextmanager # 需要使用async with配套
 async def get_model_client(model_name: str) -> AsyncGenerator[AsyncClient]:
     """
     对重名模型进行调度，依次选择：空闲的模型 -> 当前访问数最少的模型
@@ -88,6 +89,8 @@ async def get_model_client(model_name: str) -> AsyncGenerator[AsyncClient]:
 #                     header=header,
 #                 )
 # 可以在请求头部(header) 尾部(tail) 请求体(extra_json)中添加额外的JSON字段
+# 所有usage中都没有使用tail
+# 这个header和tail不是http请求中的request header, 而是响应消息中的逻辑部分，即request和response中的payload部分
 async def openai_request(
     method, body, extra_json: Dict = {}, header: Iterable = [], tail: Iterable = []
 ):
@@ -97,10 +100,10 @@ async def openai_request(
     # 只是定义
     async def generator():
         try:
-            for x in header:
+            for x in header: #如果header只有一个str，则为content内容(用来不请求，直接返回自定义content)
                 if isinstance(x, str):
                     x = OpenAIChatOutput(content=x, object="chat.completion.chunk")
-                elif isinstance(x, dict):
+                elif isinstance(x, dict): # 有多个内容，全部放进去
                     x = OpenAIChatOutput.model_validate(x)
                 else:
                     raise RuntimeError(f"unsupported value: {header}")
@@ -196,7 +199,7 @@ async def create_embeddings(
     params = body.model_dump(exclude_unset=True)
     client = get_OpenAIClient(model_name=body.model)
     return (await client.embeddings.create(**params)).model_dump()
-
+#只有嵌入模型直接获取openaiclient,其他都是从连接池中获取
 
 @openai_router.post("/images/generations")
 async def create_image_generations(
