@@ -175,7 +175,7 @@ async def chat(
             )
 
             last_tool = {}
-            async for chunk in callback.aiter():
+            async for chunk in callback.aiter(): # 使用异步回调只是为了获得agent的执行情况
                 data = json.loads(chunk)
                 print("&"*8)
                 print(data)

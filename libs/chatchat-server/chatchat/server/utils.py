@@ -692,7 +692,7 @@ def set_httpx_config(
             elif p := proxy.get(n + "_proxy"):
                 proxies[n + "_proxy"] = p
 
-    for k, v in proxies.items():
+    for k, v in proxies.items(): # 根据参数proxy设置http或https代理，设置到环境变量里，如{http_proxy:地址}
         os.environ[k] = v
 
     # set host to bypass proxy
@@ -709,7 +709,7 @@ def set_httpx_config(
         host = ":".join(x.split(":")[:2])
         if host not in no_proxy:
             no_proxy.append(host)
-    os.environ["NO_PROXY"] = ",".join(no_proxy)
+    os.environ["NO_PROXY"] = ",".join(no_proxy)  #环境变量设置no_proxy 无代理
 
     def _get_proxies():
         return proxies

@@ -439,7 +439,7 @@ def dialogue_page(
 
         if stream:
             try:
-                for d in client.chat.completions.create(**params):
+                for d in client.chat.completions.create(**params): # openai兼容接口
                     # import rich
                     # rich.print(d)
                     message_id = d.message_id

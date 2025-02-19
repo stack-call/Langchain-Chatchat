@@ -42,6 +42,7 @@ chat_router.post("/kb_chat", summary="知识库对话")(kb_chat)
 chat_router.post("/file_chat", summary="文件对话")(file_chat)
 
 
+# 虽然是openai兼容接口，但是这里判断是agent聊天还是普通聊天并调用不同功能
 @chat_router.post("/chat/completions", summary="兼容 openai 的统一 chat 接口")
 async def chat_completions(
     request: Request,
