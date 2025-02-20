@@ -17,7 +17,7 @@ from chatchat.server.callback_handler.agent_callback_handler import AgentStatus 
 from chatchat.server.pydantic_v2 import AnyUrl, BaseModel, Field
 from chatchat.server.utils import MsgType, get_default_llm
 
-
+# 参考client.chat.completions.create的源码中的结构(即create的参数)构建，用来作为其参数
 class OpenAIBaseInput(BaseModel):
     user: Optional[str] = None
     # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.

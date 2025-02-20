@@ -395,7 +395,7 @@ def get_OpenAIClient(
     if is_async:
         if httpx_params:
             params["http_client"] = httpx.AsyncClient(**httpx_params)
-        return openai.AsyncClient(**params)
+        return openai.AsyncClient(**params) # 看源码可知与AsyncOpenAI等价
     else:
         if httpx_params:
             params["http_client"] = httpx.Client(**httpx_params)
